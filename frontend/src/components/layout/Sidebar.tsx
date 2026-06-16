@@ -12,7 +12,6 @@ import {
   Users,
   LogOut
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/auth.store';
 
 const navItems = [

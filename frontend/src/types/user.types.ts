@@ -1,5 +1,5 @@
 // src/types/user.types.ts
-import type { JobType, ExperienceLevel, SalaryRange } from './job.types';
+import type { JobType,  SalaryRange } from './job.types';
 
 export interface User {
   id: string;

@@ -33,7 +33,7 @@ export const Profile: React.FC = () => {
     register,
     handleSubmit,
     setValue,
-    formState: { errors },
+    //formState: { errors },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
   });

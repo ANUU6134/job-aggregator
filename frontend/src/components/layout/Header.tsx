@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -9,12 +9,10 @@ import {
   LogOut, 
   Settings, 
   Briefcase,
-  Sun,
-  Moon,
   ChevronDown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
-import { useUIStore } from '../../store/ui.store';
+//import { useUIStore } from '../../store/ui.store';
 import { Button } from '../common/Button';
 import { ThemeToggle } from '../common/ThemeToggle';
 
@@ -22,7 +20,7 @@ export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
-  const { theme } = useUIStore();
+  //const { theme } = useUIStore();
   const navigate = useNavigate();
 
   const handleLogout = () => {

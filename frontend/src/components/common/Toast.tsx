@@ -33,7 +33,7 @@ export const Toast: React.FC = () => {
     >
       {(t: HotToast) => (
         <ToastBar toast={t}>
-          {({ icon, message }) => (
+          {({  message }) => (
             <div className="flex items-center gap-3 p-3">
               {getIcon(t.type)}
               <div className="flex-1">{message}</div>
