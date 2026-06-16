@@ -61,14 +61,15 @@ app = FastAPI(
     redoc_url="/api/redoc" if not settings.DEBUG else "/redoc"
 )
 
-# Get CORS origins from settings with debug logging
-cors_origins = settings.BACKEND_CORS_ORIGINS
-logger.info(f"CORS Origins configured: {cors_origins}")
-
-# CORS middleware
+# CORS middleware - MUST be first
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "http://localhost:8000",
+        "https://job-aggregator-frontend-oh8y.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
@@ -79,7 +80,7 @@ app.add_middleware(
 # Trusted host middleware
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.DEBUG else ["jobhub-api.onrender.com", "localhost", "127.0.0.1", "job-aggregator-backend.onrender.com"]
+    allowed_hosts=["*"] if settings.DEBUG else ["job-aggregator-api-tqli.onrender.com", "localhost", "127.0.0.1"]
 )
 
 # Custom middleware
@@ -107,8 +108,7 @@ async def root():
         "version": settings.APP_VERSION,
         "status": "operational",
         "environment": settings.ENVIRONMENT,
-        "timestamp": datetime.now().isoformat(),
-        "cors_origins": settings.BACKEND_CORS_ORIGINS
+        "timestamp": datetime.now().isoformat()
     }
 
 @app.get("/health")
@@ -129,10 +129,9 @@ async def options_route(rest_of_path: str):
 @app.post("/api/v1/scrapers/run")
 async def run_scrapers(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Manually trigger job scraping"""
-    from app.services.real_scraper_service import RealJobScraperService
-    scraper = RealJobScraperService(db)
+    scraper = JobScraperService(db)
     background_tasks.add_task(scraper.run_all_scrapers)
-    return {"message": "Real job scraping started in background"}
+    return {"message": "Scraping started in background"}
 
 @app.get("/api/v1/stats")
 async def get_platform_stats(db: Session = Depends(get_db)):
@@ -155,6 +154,16 @@ async def get_platform_stats(db: Session = Depends(get_db)):
         "recent_jobs": recent_jobs,
         "jobs_by_type": [{"type": t, "count": c} for t, c in jobs_by_type]
     }
+
+# Add to app/main.py
+
+@app.post("/api/v1/scrapers/run")
+async def run_scrapers(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Manually trigger real job scraping"""
+    from app.services.real_scraper_service import RealJobScraperService
+    scraper = RealJobScraperService(db)
+    background_tasks.add_task(scraper.run_all_scrapers)
+    return {"message": "Real job scraping started in background. This will fetch jobs from RemoteOK, WeWorkRemotely, Remotive, GitHub, StackOverflow, and Arc.dev"}
 
 @app.on_event("startup")
 async def startup_event():

@@ -1,8 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional, List
 import os
-import json
-import ast
 
 class Settings(BaseSettings):
     # App
@@ -28,12 +26,12 @@ class Settings(BaseSettings):
     # Email
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT: int = 587
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_USER: str = os.getenv("SMTP_USER", "sanushqah@gmail.com")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "dcxo dxdy ppyh puud")
     EMAIL_FROM: str = "noreply@jobhub.com"
     EMAIL_FROM_NAME: str = "JobHub"
     
-    # CORS - Default value that can be overridden by environment
+    # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
@@ -64,27 +62,5 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
-        extra = "ignore"  # This allows extra fields in env without error
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        
-        # Check if BACKEND_CORS_ORIGINS is set in environment
-        cors_env = os.getenv("BACKEND_CORS_ORIGINS")
-        if cors_env:
-            try:
-                # Try JSON parsing
-                parsed = json.loads(cors_env)
-                if isinstance(parsed, list):
-                    self.BACKEND_CORS_ORIGINS = parsed
-            except json.JSONDecodeError:
-                try:
-                    # Try Python literal eval
-                    parsed = ast.literal_eval(cors_env)
-                    if isinstance(parsed, list):
-                        self.BACKEND_CORS_ORIGINS = parsed
-                except (ValueError, SyntaxError):
-                    # Try comma-separated
-                    self.BACKEND_CORS_ORIGINS = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
 
 settings = Settings()
