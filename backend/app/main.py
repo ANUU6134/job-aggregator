@@ -1,13 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from contextlib import asynccontextmanager
 import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from typing import List, Optional
 from datetime import datetime, timedelta
-import asyncio
 
 from app.core.config import settings
 from app.core.database import engine, Base, get_db
@@ -16,11 +14,7 @@ from app.models.user import User
 from app.models.job import Job
 from app.models.company import Company
 from app.models.application import JobApplication
-from app.models.notification import JobAlert, Notification
 from app.api.v1.endpoints import auth, jobs, users, applications, companies, admin, salary, dashboard
-from app.services.scraper_service import JobScraperService
-from app.services.ai_matcher import AIJobMatcher
-from app.services.email_service import EmailService
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.logging import LoggingMiddleware
 from app.tasks.scheduler import start_scheduler
@@ -38,14 +32,20 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting up JobHub API...")
     
-    # Create database tables
-    ModelBase.metadata.create_all(bind=engine)
-    logger.info("Database tables created")
+    try:
+        # Create database tables
+        ModelBase.metadata.create_all(bind=engine)
+        logger.info("Database tables created")
+    except Exception as e:
+        logger.error(f"Database creation error: {e}")
     
     # Start background scheduler
     if not settings.DEBUG:
-        start_scheduler()
-        logger.info("Background scheduler started")
+        try:
+            start_scheduler()
+            logger.info("Background scheduler started")
+        except Exception as e:
+            logger.error(f"Scheduler error: {e}")
     
     yield
     
@@ -61,26 +61,23 @@ app = FastAPI(
     redoc_url="/api/redoc" if not settings.DEBUG else "/redoc"
 )
 
-# CORS middleware - MUST be first
+# Get CORS origins with fallback
+cors_origins = settings.BACKEND_CORS_ORIGINS
+logger.info(f"CORS Origins configured: {cors_origins}")
+
+# CORS middleware - with explicit configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173", 
-        "http://localhost:8000",
-        "https://job-aggregator-frontend-oh8y.onrender.com"
-    ],
+    allow_origins=["*"],  # Allow all during debugging
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
 )
 
 # Trusted host middleware
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.DEBUG else ["job-aggregator-api-tqli.onrender.com", "localhost", "127.0.0.1"]
+    allowed_hosts=["*"]
 )
 
 # Custom middleware
@@ -112,68 +109,35 @@ async def root():
     }
 
 @app.get("/health")
-async def health_check(db: Session = Depends(get_db)):
+async def health_check():
     try:
-        # Check database
-        db.execute("SELECT 1")
-        return {"status": "healthy", "database": "connected"}
+        return {"status": "healthy", "service": "JobHub API"}
     except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
-
-@app.options("/{rest_of_path:path}")
-async def options_route(rest_of_path: str):
-    """Handle preflight requests"""
-    return {"message": "OK"}
-
-@app.post("/api/v1/scrapers/run")
-async def run_scrapers(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """Manually trigger job scraping"""
-    scraper = JobScraperService(db)
-    background_tasks.add_task(scraper.run_all_scrapers)
-    return {"message": "Scraping started in background"}
+        return {"status": "unhealthy", "error": str(e)}
 
 @app.get("/api/v1/stats")
 async def get_platform_stats(db: Session = Depends(get_db)):
     """Get platform statistics"""
-    total_jobs = db.query(Job).filter(Job.is_active == True).count()
-    total_companies = db.query(Company).count()
-    total_users = db.query(User).count()
-    
-    # Jobs by type
-    jobs_by_type = db.query(Job.job_type, func.count(Job.id)).group_by(Job.job_type).all()
-    
-    # Recent jobs (last 7 days)
-    week_ago = datetime.now() - timedelta(days=7)
-    recent_jobs = db.query(Job).filter(Job.posted_date >= week_ago).count()
-    
-    return {
-        "total_jobs": total_jobs,
-        "total_companies": total_companies,
-        "total_users": total_users,
-        "recent_jobs": recent_jobs,
-        "jobs_by_type": [{"type": t, "count": c} for t, c in jobs_by_type]
-    }
-
-# Add to app/main.py
-
-@app.post("/api/v1/scrapers/run")
-async def run_scrapers(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """Manually trigger real job scraping"""
-    from app.services.real_scraper_service import RealJobScraperService
-    scraper = RealJobScraperService(db)
-    background_tasks.add_task(scraper.run_all_scrapers)
-    return {"message": "Real job scraping started in background. This will fetch jobs from RemoteOK, WeWorkRemotely, Remotive, GitHub, StackOverflow, and Arc.dev"}
-
-@app.on_event("startup")
-async def startup_event():
-    """Start background tasks on app startup"""
-    logger.info("Application startup complete")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Application shutdown")
+    try:
+        total_jobs = db.query(Job).filter(Job.is_active == True).count()
+        total_companies = db.query(Company).count()
+        total_users = db.query(User).count()
+        
+        jobs_by_type = db.query(Job.job_type, func.count(Job.id)).group_by(Job.job_type).all()
+        
+        week_ago = datetime.now() - timedelta(days=7)
+        recent_jobs = db.query(Job).filter(Job.posted_date >= week_ago).count()
+        
+        return {
+            "total_jobs": total_jobs,
+            "total_companies": total_companies,
+            "total_users": total_users,
+            "recent_jobs": recent_jobs,
+            "jobs_by_type": [{"type": t, "count": c} for t, c in jobs_by_type]
+        }
+    except Exception as e:
+        logger.error(f"Stats error: {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
