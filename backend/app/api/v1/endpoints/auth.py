@@ -85,13 +85,18 @@ async def register(
     db.commit()
     db.refresh(new_user)
     
-    # Send verification email
-    background_tasks.add_task(
-        EmailService.send_verification_email,
-        user_data.email,
-        verification_token,
-        f"{user_data.first_name} {user_data.last_name}"
-    )
+    # Send verification email in background (don't block the response)
+    try:
+        background_tasks.add_task(
+            EmailService.send_verification_email,
+            user_data.email,
+            verification_token,
+            f"{user_data.first_name} {user_data.last_name}"
+        )
+        logger.info(f"Verification email queued for {user_data.email}")
+    except Exception as e:
+        logger.error(f"Failed to queue verification email: {str(e)}")
+        # Don't fail registration if email fails
     
     # Create tokens
     access_token = create_access_token(str(new_user.id))
