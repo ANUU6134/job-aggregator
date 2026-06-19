@@ -35,7 +35,8 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://job-aggregator-frontend-oh8y.onrender.com"
+        "https://job-aggregator-frontend-oh8y.onrender.com",
+        "https://job-aggregator-api-tqli.onrender.com"
     ]
     
     # Rate Limiting

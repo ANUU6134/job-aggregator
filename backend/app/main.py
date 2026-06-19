@@ -68,7 +68,8 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5173", 
         "http://localhost:8000",
-        "https://job-aggregator-frontend-oh8y.onrender.com"
+        "https://job-aggregator-frontend-oh8y.onrender.com",
+        "https://job-aggregator-api-tqli.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
