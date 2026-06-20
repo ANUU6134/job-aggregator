@@ -1,8 +1,9 @@
+# backend/app/tasks/scheduler.py
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +17,13 @@ def start_scheduler():
     def scrape_jobs():
         logger.info("Starting scheduled job scraping...")
         try:
-            # Import here to avoid circular imports
             from ..core.database import SessionLocal
-            from ..services.scraper_service import JobScraperService
+            from ..services.real_scraper_service import RealJobScraperService
+            import asyncio
             
             db = SessionLocal()
-            scraper = JobScraperService(db)
+            scraper = RealJobScraperService(db)
             
-            # Run asynchronously in sync context
-            import asyncio
             asyncio.run(scraper.run_all_scrapers())
             
             db.close()
@@ -38,12 +37,11 @@ def start_scheduler():
         logger.info("Cleaning old jobs...")
         try:
             from ..core.database import SessionLocal
-            from datetime import timedelta
+            from ..models.job import Job
             
             db = SessionLocal()
             cutoff_date = datetime.now() - timedelta(days=30)
             
-            from ..models.job import Job
             old_jobs = db.query(Job).filter(
                 Job.posted_date < cutoff_date,
                 Job.is_active == True
@@ -67,7 +65,9 @@ def start_scheduler():
             from ..core.database import SessionLocal
             from ..services.email_service import EmailService
             from ..models.job import Job
-            from ..models.user import User, JobAlert
+            from ..models.job_alert import JobAlert  # Fixed import
+            from ..models.user import User
+            import asyncio
             
             db = SessionLocal()
             
@@ -84,17 +84,19 @@ def start_scheduler():
                 
                 jobs = query.limit(20).all()
                 
-                if jobs and alert.user.email:
-                    job_list = [{
-                        'title': job.title,
-                        'company': job.company_name,
-                        'location': job.location,
-                        'description': job.description
-                    } for job in jobs]
-                    
-                    import asyncio
-                    asyncio.run(EmailService.send_job_alert(alert.user.email, job_list, 'daily'))
-                    alert.last_sent_at = datetime.now()
+                if jobs and alert.user_id:
+                    # Get user email
+                    user = db.query(User).filter(User.id == alert.user_id).first()
+                    if user and user.email:
+                        job_list = [{
+                            'title': job.title,
+                            'company': job.company_name,
+                            'location': job.location,
+                            'description': job.description
+                        } for job in jobs]
+                        
+                        asyncio.run(EmailService.send_job_alert(user.email, job_list, 'daily'))
+                        alert.last_sent_at = datetime.now()
             
             db.commit()
             db.close()
