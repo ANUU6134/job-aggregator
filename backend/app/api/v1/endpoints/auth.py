@@ -7,11 +7,14 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 import uuid
+import logging
 
 from ....core.database import get_db
 from ....core.config import settings
 from ....models.user import User
 from ....services.email_service import EmailService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 pwd_context = CryptContext(
