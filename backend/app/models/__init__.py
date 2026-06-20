@@ -4,8 +4,8 @@ from .user import User, UserProfile, UserSkill, WorkExperience, Education
 from .company import Company
 from .job import Job, SavedJob
 from .application import JobApplication, ApplicationInterview
-from .job_alert import JobAlert  # Add this
-from .notification import Notification
+#from .job_alert import JobAlert  # Add this
+from .notification import Notification, JobAlert
 from .scraping_log import ScrapingLog
 
 # Import all models so they register with SQLAlchemy

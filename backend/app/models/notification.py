@@ -7,6 +7,7 @@ from .base import Base
 
 class JobAlert(Base):
     __tablename__ = "job_alerts"
+    __table_args__ = {'extend_existing': True}  # Add this
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
