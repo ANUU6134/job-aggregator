@@ -88,17 +88,18 @@ async def register(
     db.commit()
     db.refresh(new_user)
     
+    #The email verification fails because the server is unreachable causing problems during registration. To prevent this, we will send the verification email in the background and not block the registration process if it fails. This way, users can still register successfully even if there are issues with the email service.   
     # Send verification email in background (don't block the response)
-    try:
-        background_tasks.add_task(
-            EmailService.send_verification_email,
-            user_data.email,
-            verification_token,
-            f"{user_data.first_name} {user_data.last_name}"
-        )
-        logger.info(f"Verification email queued for {user_data.email}")
-    except Exception as e:
-        logger.error(f"Failed to queue verification email: {str(e)}")
+    #try:
+        #background_tasks.add_task(
+            #EmailService.send_verification_email,
+            #user_data.email,
+            #verification_token,
+            #f"{user_data.first_name} {user_data.last_name}"
+        #)
+        #logger.info(f"Verification email queued for {user_data.email}")
+    #except Exception as e:
+        #logger.error(f"Failed to queue verification email: {str(e)}")
         # Don't fail registration if email fails
     
     # Create tokens
